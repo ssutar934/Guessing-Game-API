@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Guessing Game</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .game-controls {
+            margin: 20px 0;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        input {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 80px;
+        }
+        .message {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #e8f5e9;
+            border-left: 5px solid #4CAF50;
+            border-radius: 4px;
+        }
+        .error {
+            background-color: #ffebee;
+            border-left: 5px solid #f44336;
+        }
+        .game-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+        .guess-history {
+            margin-top: 20px;
+        }
+        .guess-history h3 {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        .guesses {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .guess-item {
+            background-color: #e0e0e0;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Number Guessing Game</h1>
+        <div class="game-controls">
+            <button id="newGameBtn">Start New Game</button>
+        </div>
+
+        <div id="gameArea" style="display: none;">
+            <div class="message" id="messageArea">I'm thinking of a number between 1 and 100.</div>
+            
+            <div>
+                <input type="number" id="guessInput" min="1" max="100" placeholder="1-100">
+                <button id="guessBtn">Make Guess</button>
+            </div>
+            
+            <div class="game-stats">
+                <span id="attemptCount">Attempts: 0/10</span>
+                <span id="gameStatus">Status: Active</span>
+            </div>
+            
+            <div class="guess-history">
+                <h3>Your Guesses</h3>
+                <div class="guesses" id="guessHistory"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        let gameState = {
+            gameId: null,
+            attemptsRemaining: 0,
+            attemptsMade: 0,
+            guesses: [],
+            isGameOver: false
+        };
+
+        // DOM elements
+        const newGameBtn = document.getElementById('newGameBtn');
+        const gameArea = document.getElementById('gameArea');
+        const messageArea = document.getElementById('messageArea');
+        const guessInput = document.getElementById('guessInput');
+        const guessBtn = document.getElementById('guessBtn');
+        const attemptCount = document.getElementById('attemptCount');
+        const gameStatus = document.getElementById('gameStatus');
+        const guessHistory = document.getElementById('guessHistory');
+
+        // Event listeners
+        newGameBtn.addEventListener('click', startNewGame);
+        guessBtn.addEventListener('click', makeGuess);
+        guessInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') makeGuess();
+        });
+
+        // Start a new game
+        async function startNewGame() {
+            try {
+                const response = await fetch('/game/new', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    gameState.gameId = data.game_id;
+                    gameState.attemptsRemaining = data.attempts_remaining;
+                    gameState.attemptsMade = 0;
+                    gameState.guesses = [];
+                    gameState.isGameOver = false;
+                    
+                    // Update UI
+                    messageArea.textContent = data.message;
+                    messageArea.classList.remove('error');
+                    attemptCount.textContent = `Attempts: ${gameState.attemptsMade}/${gameState.attemptsMade + gameState.attemptsRemaining}`;
+                    gameStatus.textContent = `Status: ${data.status}`;
+                    guessHistory.innerHTML = '';
+                    guessInput.value = '';
+                    guessInput.disabled = false;
+                    guessBtn.disabled = false;
+                    gameArea.style.display = 'block';
+                } else {
+                    showError(data.error || 'Failed to start new game');
+                }
+            } catch (error) {
+                showError('Server error. Make sure the Flask server is running.');
+                console.error('Error:', error);
+            }
+        }
+
+        // Make a guess
+        async function makeGuess() {
+            const guess = parseInt(guessInput.value);
+            
+            if (isNaN(guess) || guess < 1 || guess > 100) {
+                showError('Please enter a valid number between 1 and 100');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`http://127.0.0.1:5000/game/${gameState.gameId}/guess`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ guess })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Update game state
+                    gameState.attemptsMade = data.attempts_made;
+                    gameState.attemptsRemaining = data.attempts_remaining;
+                    gameState.isGameOver = data.game_over || false;
+                    
+                    // Add guess to history
+                    gameState.guesses.push(guess);
+                    updateGuessHistory();
+                    
+                    // Update UI
+                    messageArea.textContent = data.message;
+                    messageArea.classList.remove('error');
+                    attemptCount.textContent = `Attempts: ${gameState.attemptsMade}/${gameState.attemptsMade + gameState.attemptsRemaining}`;
+                    gameStatus.textContent = `Status: ${data.status || (gameState.isGameOver ? 'Completed' : 'Active')}`;
+                    guessInput.value = '';
+                    
+                    // If game is over, disable input
+                    if (gameState.isGameOver) {
+                        guessInput.disabled = true;
+                        guessBtn.disabled = true;
+                    }
+                } else {
+                    showError(data.error || 'Failed to process guess');
+                }
+            } catch (error) {
+                showError('Server error. Make sure the Flask server is running.');
+                console.error('Error:', error);
+            }
+        }
+
+        // Update guess history display
+        function updateGuessHistory() {
+            guessHistory.innerHTML = '';
+            gameState.guesses.forEach(guess => {
+                const guessElement = document.createElement('span');
+                guessElement.className = 'guess-item';
+                guessElement.textContent = guess;
+                guessHistory.appendChild(guessElement);
+            });
+        }
+
+        // Show error message
+        function showError(message) {
+            messageArea.textContent = message;
+            messageArea.classList.add('error');
+        }
+    </script>
+</body>
+</html>
