@@ -1,0 +1,120 @@
+
+@keyframes correct-guess {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); background-color: #4CAF50; }
+    100% { transform: scale(1); }
+  }
+  
+  @keyframes wrong-guess {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    50% { transform: translateX(10px); }
+    75% { transform: translateX(-10px); }
+    100% { transform: translateX(0); }
+  }
+  
+  .correct-animation {
+    animation: correct-guess 0.6s ease-in-out;
+  }
+  
+  .wrong-animation {
+    animation: wrong-guess 0.5s ease-in-out;
+    background-color: #ffebee;
+  }
+  
+  /* Improved visual styles */
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f9f9f9;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh; /* Full viewport height */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .container {
+   max-width: 600px;
+    width: 100%; /* Take full width up to max-width */
+    margin: 20px;
+    background-color: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+  
+  button {
+    background-color: #4285F4;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  button:hover {
+    background-color: #3367D6;
+  }
+  
+  button:after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.5);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%);
+    transform-origin: 50% 50%;
+  }
+  
+  button:focus:not(:active)::after {
+    animation: ripple 1s ease-out;
+  }
+  
+  input {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+    width: 100px;
+  }
+  
+  .message {
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+  }
+  
+  @keyframes ripple {
+    0% {
+      transform: scale(0, 0);
+      opacity: 0.5;
+    }
+    20% {
+      transform: scale(25, 25);
+      opacity: 0.3;
+    }
+    100% {
+      opacity: 0;
+      transform: scale(40, 40);
+    }
+  }
+  
+  /* For smaller screens */
+  @media (max-width: 640px) {
+    .container {
+      margin: 10px;
+      padding: 15px;
+    }
+  }

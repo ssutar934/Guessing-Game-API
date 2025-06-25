@@ -6,18 +6,32 @@
     <title>Number Guessing Game</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background-color: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
+                margin: 0;
+                padding: 0;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background-color: #f5f7fa;
+            }
+
+            /* Full-page wrapper to center content */
+            .page-wrapper {
+                display: flex;
+                justify-content: center;
+                align-items: flex-start; /* Change from center to flex-start */
+                min-height: 100vh;
+                width: 100%;
+                padding: 80px 20px 20px 20px; /* Add more padding to the top (80px) */
+                box-sizing: border-box;
+            }
+
+            /* Container styling */
+            .container {
+                width: 100%;
+                max-width: 600px;
+                background-color: white;
+                padding: 25px;
+                border-radius: 8px;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            }
         h1 {
             color: #333;
             text-align: center;
@@ -85,35 +99,67 @@
             border-radius: 15px;
             font-size: 14px;
         }
+        .difficulty-selector {
+          margin-bottom: 20px;
+        }
+
+        .difficulty-buttons {
+          display: flex;
+          gap: 10px;
+        }
+
+        .difficulty-btn {
+          flex: 1;
+          padding: 8px;
+          background-color: #e0e0e0;
+          color: #333;
+        }
+
+        .difficulty-btn.selected {
+          background-color: #4285F4;
+          color: white;
+        }
     </style>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Number Guessing Game</h1>
-        <div class="game-controls">
-            <button id="newGameBtn">Start New Game</button>
-        </div>
+    <div class="page-wrapper">
+        <div class="container">
+            <h1>Number Guessing Game</h1>
 
-        <div id="gameArea" style="display: none;">
-            <div class="message" id="messageArea">I'm thinking of a number between 1 and 100.</div>
-            
-            <div>
-                <input type="number" id="guessInput" min="1" max="100" placeholder="1-100">
-                <button id="guessBtn">Make Guess</button>
+            <div class="difficulty-selector">
+                <h3>Choose Difficulty:</h3>
+                  <div class="difficulty-buttons">
+                    <button id="easyBtn" class="difficulty-btn">Easy (1-50)</button>
+                    <button id="mediumBtn" class="difficulty-btn">Medium (1-100)</button>
+                    <button id="hardBtn" class="difficulty-btn">Hard (1-200)</button>
+                  </div>
             </div>
-            
-            <div class="game-stats">
-                <span id="attemptCount">Attempts: 0/10</span>
-                <span id="gameStatus">Status: Active</span>
+
+            <div class="game-controls">
+                <button id="newGameBtn">Start New Game</button>
             </div>
-            
-            <div class="guess-history">
-                <h3>Your Guesses</h3>
-                <div class="guesses" id="guessHistory"></div>
+
+            <div id="gameArea" style="display: none;">
+                <div class="message" id="messageArea">I'm thinking of a number between 1 and 100.</div>
+
+                <div>
+                    <input type="number" id="guessInput" min="1" max="100" placeholder="1-100">
+                    <button id="guessBtn">Make Guess</button>
+                </div>
+
+                <div class="game-stats">
+                    <span id="attemptCount">Attempts: 0/10</span>
+                    <span id="gameStatus">Status: Active</span>
+                </div>
+
+                <div class="guess-history">
+                    <h3>Your Guesses</h3>
+                    <div class="guesses" id="guessHistory"></div>
+                </div>
             </div>
         </div>
-    </div>
-
+   </div>
     <script>
         // Game state
         let gameState = {
@@ -134,9 +180,20 @@
         const gameStatus = document.getElementById('gameStatus');
         const guessHistory = document.getElementById('guessHistory');
 
+        let currentDifficulty = 'medium';
+        const easyBtn = document.getElementById('easyBtn');
+        const mediumBtn = document.getElementById('mediumBtn');
+        const hardBtn = document.getElementById('hardBtn');
+
         // Event listeners
         newGameBtn.addEventListener('click', startNewGame);
         guessBtn.addEventListener('click', makeGuess);
+        easyBtn.addEventListener('click', () => setDifficulty('easy'));
+        mediumBtn.addEventListener('click', () => setDifficulty('medium'));
+        hardBtn.addEventListener('click', () => setDifficulty('hard'));
+
+
+
         guessInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') makeGuess();
         });
@@ -148,18 +205,19 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({ difficulty: currentDifficulty })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     gameState.gameId = data.game_id;
                     gameState.attemptsRemaining = data.attempts_remaining;
                     gameState.attemptsMade = 0;
                     gameState.guesses = [];
                     gameState.isGameOver = false;
-                    
+
                     // Update UI
                     messageArea.textContent = data.message;
                     messageArea.classList.remove('error');
@@ -173,6 +231,13 @@
                 } else {
                     showError(data.error || 'Failed to start new game');
                 }
+
+                 if (data.range) {
+                      guessInput.min = data.range[0];
+                      guessInput.max = data.range[1];
+                      guessInput.placeholder = `${data.range[0]}-${data.range[1]}`;
+                }
+
             } catch (error) {
                 showError('Server error. Make sure the Flask server is running.');
                 console.error('Error:', error);
@@ -182,40 +247,47 @@
         // Make a guess
         async function makeGuess() {
             const guess = parseInt(guessInput.value);
-            
+
             if (isNaN(guess) || guess < 1 || guess > 100) {
                 showError('Please enter a valid number between 1 and 100');
                 return;
             }
-            
+
             try {
-                const response = await fetch(`http://127.0.0.1:5000/game/${gameState.gameId}/guess`, {
+                const response = await fetch(`/game/${gameState.gameId}/guess`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ guess })
                 });
-                
+
                 const data = await response.json();
-                
+
+                if (data.won === true) {
+                    animateMessage(true); // Correct guess
+                } else {
+                    animateMessage(false); // Wrong guess
+                }
+
+
                 if (response.ok) {
                     // Update game state
                     gameState.attemptsMade = data.attempts_made;
                     gameState.attemptsRemaining = data.attempts_remaining;
                     gameState.isGameOver = data.game_over || false;
-                    
+
                     // Add guess to history
                     gameState.guesses.push(guess);
                     updateGuessHistory();
-                    
+
                     // Update UI
                     messageArea.textContent = data.message;
                     messageArea.classList.remove('error');
                     attemptCount.textContent = `Attempts: ${gameState.attemptsMade}/${gameState.attemptsMade + gameState.attemptsRemaining}`;
                     gameStatus.textContent = `Status: ${data.status || (gameState.isGameOver ? 'Completed' : 'Active')}`;
                     guessInput.value = '';
-                    
+
                     // If game is over, disable input
                     if (gameState.isGameOver) {
                         guessInput.disabled = true;
@@ -245,6 +317,34 @@
         function showError(message) {
             messageArea.textContent = message;
             messageArea.classList.add('error');
+        }
+        function animateMessage(isCorrect) {
+            const messageArea = document.getElementById('messageArea');
+
+            // Remove existing animation classes
+            messageArea.classList.remove('correct-animation', 'wrong-animation');
+
+            // Force browser to recognize the change
+            void messageArea.offsetWidth;
+
+            // Add appropriate animation class
+            if (isCorrect) {
+                messageArea.classList.add('correct-animation');
+            } else {
+                messageArea.classList.add('wrong-animation');
+            }
+        }
+        function setDifficulty(difficulty) {
+              currentDifficulty = difficulty;
+
+              // Update UI to show selected difficulty
+              easyBtn.classList.remove('selected');
+              mediumBtn.classList.remove('selected');
+              hardBtn.classList.remove('selected');
+
+              if (difficulty === 'easy') easyBtn.classList.add('selected');
+              if (difficulty === 'medium') mediumBtn.classList.add('selected');
+              if (difficulty === 'hard') hardBtn.classList.add('selected');
         }
     </script>
 </body>
